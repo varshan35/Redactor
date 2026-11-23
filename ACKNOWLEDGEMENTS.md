@@ -2,7 +2,7 @@
 
 ## AI assistance
 
-This project was built with AI assistance. The team set the requirements, made the design decisions,
+This project was built with AI assistance. The participant set the requirements, made the design decisions,
 reviewed and tested the output, and is responsible for the final result.
 
 | Tool | Provider | Used for |
