@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Redaction Review</title>
+<style>
+:root{--bg:#f6f7f9;--panel:#fff;--ink:#1b1f24;--mute:#6b7280;--line:#e3e6ea;
+ --NAME:37,99,235;--EMAIL:22,163,74;--PHONE:234,88,12;--ADDRESS:13,148,136;--ID:147,51,234}
+@media (prefers-color-scheme:dark){:root{--bg:#14171a;--panel:#1d2126;--ink:#e8eaed;--mute:#9aa3ad;--line:#2d333a}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,sans-serif}
+header{display:flex;gap:12px;align-items:center;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+header h1{font-size:16px;margin:0 8px 0 0}
+button,select{font:inherit;padding:5px 10px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink);cursor:pointer}
+button.primary{background:#2563eb;color:#fff;border-color:#2563eb}
+button:disabled{opacity:.5;cursor:default}
+main{display:grid;grid-template-columns:1fr 330px;gap:14px;padding:14px;max-width:1300px;margin:0 auto}
+@media(max-width:900px){main{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
+#doc{white-space:pre-wrap;font:14px/1.9 ui-monospace,Menlo,Consolas,monospace;min-height:300px}
+#pages img{max-width:100%;border:1px solid var(--line);margin-bottom:8px;display:block}
+.tabs button.on{background:var(--ink);color:var(--bg)}
+mark{color:inherit;border-radius:3px;padding:1px 2px;cursor:pointer;border-bottom:2px solid transparent}
+mark sup{font-size:9px;margin-left:2px;color:var(--mute)}
+mark.cur{outline:2px solid #f59e0b;outline-offset:1px}
+mark.hi{border-bottom-style:solid}mark.med{border-bottom-style:dashed}mark.lo{border-bottom-style:dotted}
+mark.pending.NAME{background:rgba(var(--NAME),.28);border-color:rgb(var(--NAME))}
+mark.pending.EMAIL{background:rgba(var(--EMAIL),.28);border-color:rgb(var(--EMAIL))}
+mark.pending.PHONE{background:rgba(var(--PHONE),.28);border-color:rgb(var(--PHONE))}
+mark.pending.ADDRESS{background:rgba(var(--ADDRESS),.28);border-color:rgb(var(--ADDRESS))}
+mark.pending.ID{background:rgba(var(--ID),.28);border-color:rgb(var(--ID))}
+mark.pending.med{filter:saturate(.8);opacity:.85}mark.pending.lo{opacity:.65}
+mark.approved{background:#000;color:#fff;border-color:#000}
+mark.rejected{background:transparent;text-decoration:line-through;opacity:.5;border-color:var(--line)}
+mark.amb{box-shadow:0 0 0 1px #dc2626}
+.chip{display:inline-block;font-size:11px;padding:1px 7px;border-radius:9px;margin-right:4px;color:#fff}
+.legend span{margin-right:8px;font-size:12px}
+.kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;background:var(--bg)}
+h3{margin:14px 0 6px;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--mute)}
+#cur .t{font-weight:600;word-break:break-all}.mute{color:var(--mute);font-size:12px}
+#drop{border:2px dashed var(--line);border-radius:10px;padding:40px;text-align:center;color:var(--mute)}
+#drop.over{border-color:#2563eb}
+ul{margin:4px 0;padding-left:18px}li{font-size:12px;margin:2px 0}
+.ok{color:#16a34a;font-weight:600}.bad{color:#dc2626;font-weight:600}
+#fmodal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:10}
+#fmodal[hidden]{display:none}
+#fbox{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;width:min(680px,94vw);max-height:90vh;overflow:auto}
+#fbox h2{font-size:16px;margin:0 0 4px}#fbox table{width:100%;border-collapse:collapse;margin-top:8px}
+#fbox td,#fbox th{border:1px solid var(--line);padding:4px 8px;text-align:left;font-size:13px}
+#fq{width:100%;font:15px ui-monospace,Menlo,Consolas,monospace;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+.hash{font:12px ui-monospace,monospace;word-break:break-all;background:var(--bg);padding:6px 8px;border-radius:6px}
+.row0{color:#16a34a}.rowN{color:#dc2626;font-weight:600}
+</style>
+</head>
+<body>
+<header>
+  <h1>Redaction Review</h1>
+  <input type="file" id="file" accept=".txt,.pdf" hidden>
+  <button onclick="file.click()">Open TXT / PDF</button>
+  <button id="demo">Load demo document</button>
+  <button id="bulk" disabled>Approve high-confidence (≥0.85)</button>
+  <button id="rescan" disabled>Rescan with my corrections</button>
+  <button id="reset" disabled title="Forget all remembered accepts/rejects">Reset learning</button>
+  <label class="mute" title="A small local model double-checks uncertain names and finds names the rules miss"><input type="checkbox" id="slmtoggle" checked> small model</label>
+  <select id="label" title="Label for manual redaction"><option>NAME</option><option>EMAIL</option><option>PHONE</option><option>ADDRESS</option><option>ID</option></select>
+  <button id="addbtn" disabled>Add selection <span class="kbd">N</span></button>
+  <button id="export" class="primary" disabled>Export redacted copy</button>
+  <button id="inspect" disabled title="Look inside the exported file: live search of every text source + SHA-256">Inspect export</button>
+  <button id="report" disabled title="Shareable audit: counts, checks, no removed text">Report</button>
+  <span class="mute" id="count"></span>
+</header>
+<main>
+  <section class="card">
+    <div class="tabs" id="tabs" hidden><button id="tText" class="on">Text view</button> <button id="tPage">Page view (PDF)</button></div>
+    <div id="drop">Drop a .txt or text-based .pdf here, or use “Open”.<br>Processed locally; nothing is uploaded anywhere.</div>
+    <div id="doc" hidden></div>
+    <div id="pages" hidden></div>
+  </section>
+  <aside>
+    <div class="card" id="side" hidden>
+      <div class="legend" id="legend"></div>
+      <h3>Selected</h3>
+      <div id="cur" class="mute">Click a highlight.</div>
+      <div style="margin-top:8px">
+        <button id="bA">Approve <span class="kbd">A</span></button>
+        <button id="bR">Reject <span class="kbd">R</span></button>
+        <button id="bAS">Approve all similar <span class="kbd">⇧A</span></button>
+        <button id="bRS">Reject all similar <span class="kbd">⇧R</span></button>
+        <button id="bU">Undo <span class="kbd">U</span></button>
+      </div>
+      <h3>Keys</h3>
+      <div class="mute"><span class="kbd">Space</span>/<span class="kbd">J</span> next · <span class="kbd">K</span> previous · <span class="kbd">N</span> add selected text as redaction · <span class="kbd">E</span> export</div>
+      <h3>Detection engine</h3><div id="slminfo" class="mute"></div>
+      <h3>Linked people</h3><div id="ents" class="mute"></div>
+      <h3>Looked like PII, ignored</h3><ul id="supp"></ul>
+      <h3>Export check</h3><div id="exp" class="mute">Not exported yet.</div>
+      <h3>Privacy-safe summary <span class="kbd">S</span></h3>
+      <button id="sum">Generate from approved text</button>
+      <div id="sumout" class="mute" style="margin-top:6px">Built only from the redacted text. Regenerate after changing approvals.</div>
+    </div>
+  </aside>
+</main>
+<div id="fmodal" hidden><div id="fbox">
+  <div style="display:flex;justify-content:space-between;align-items:center"><h2>Forensic inspector — exported file</h2><button id="fclose">Close</button></div>
+  <div class="mute">Searches the <b>exported</b> file, not the original, using every way we can read text back out of it.</div>
+  <h3>Search the exported file</h3>
+  <input id="fq" placeholder="Type a name, e-mail or ID number, e.g. a value you redacted" autocomplete="off" spellcheck="false">
+  <div id="fres" class="mute" style="margin-top:6px">Type at least 2 characters.</div>
+  <h3>What the file contains</h3><div id="fstruct" class="mute"></div>
+  <h3>Checksum of the exported file</h3>
+  <div class="hash" id="fhash"></div>
+  <div class="mute">SHA-256 shows the file has not changed since export. It does not by itself prove redaction; the searches above and the file structure do.</div>
+</div></div>
+<script>
+const COL={NAME:'37,99,235',EMAIL:'22,163,74',PHONE:'234,88,12',ADDRESS:'13,148,136',ID:'147,51,234'};
+let S=null, cur=-1, view='text';
+const $=id=>document.getElementById(id);
+async function api(path,body){const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});const j=await r.json();if(!r.ok){alert(j.error||'error');throw 0}return j}
+async function upload(f){$('drop').innerHTML='Analysing… (the small model can take a few seconds)';const fd=new FormData();fd.append('file',f);const r=await fetch('/api/upload',{method:'POST',body:fd});const j=await r.json();if(!r.ok){alert(j.error);$('drop').innerHTML='Drop a .txt or text-based .pdf here, or use “Open”.<br>Processed locally; nothing is uploaded anywhere.';return}S=j;cur=-1;$('drop').hidden=true;$('side').hidden=false;['bulk','rescan','reset','export','report'].forEach(i=>$(i).disabled=false);$('inspect').disabled=true;$('tabs').hidden=S.kind!=='pdf';setView('text');render();if(S.cands.length)select(0)}
+async function openDemo(){$('drop').hidden=false;$('drop').innerHTML='Analysing… (the small model can take a few seconds)';
+  const r=await fetch('/api/demo',{method:'POST'});const j=await r.json();if(!r.ok){alert(j.error);return}
+  S=j;cur=-1;$('drop').hidden=true;$('side').hidden=false;['bulk','rescan','reset','export','report'].forEach(i=>$(i).disabled=false);$('inspect').disabled=true;
+  $('tabs').hidden=S.kind!=='pdf';setView('text');render();if(S.cands.length)select(0)}
+$('demo').onclick=openDemo;
+$('report').onclick=()=>window.open('/report','_blank');
+$('file').onchange=e=>e.target.files[0]&&upload(e.target.files[0]);
+const drop=$('drop');drop.ondragover=e=>{e.preventDefault();drop.classList.add('over')};drop.ondragleave=()=>drop.classList.remove('over');drop.ondrop=e=>{e.preventDefault();drop.classList.remove('over');upload(e.dataTransfer.files[0])};
+function esc(s){return s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
+function render(){
+  const t=S.text;let h='',p=0;
+  for(const c of S.cands){ if(c.start<p)continue; h+=`<span data-s="${p}">${esc(t.slice(p,c.start))}</span>`;
+    const lv=c.conf>=.85?'hi':c.conf>=.65?'med':'lo';
+    const shown=c.status==='approved'?'█'.repeat(Math.min(c.text.length,40)):esc(c.text);   // approved text is not kept in the page
+    h+=`<mark data-id="${c.id}" class="${c.status} ${c.label} ${lv} ${c.ambiguous?'amb':''} ${c.id===cur?'cur':''}" title="${c.label} · ${c.reason||c.source}">${shown}<sup>${c.status==='approved'?'':c.conf.toFixed(2)}</sup></mark>`;p=c.end}
+  h+=`<span data-s="${p}">${esc(t.slice(p))}</span>`;$('doc').innerHTML=h;
+  document.querySelectorAll('mark').forEach(m=>m.onclick=()=>select(+m.dataset.id));
+  const n={pending:0,approved:0,rejected:0};S.cands.forEach(c=>n[c.status]++);
+  $('count').textContent=`${n.approved} approved · ${n.pending} pending · ${n.rejected} rejected`;
+  $('legend').innerHTML=Object.keys(COL).map(k=>`<span><span class="chip" style="background:rgb(${COL[k]})">${k}</span></span>`).join('')+'<div class="mute">Colour = type · underline solid/dashed/dotted = high/medium/low confidence · red outline = ambiguous</div>';
+  const m=S.slm||{};$('slmtoggle').checked=!!m.enabled;
+  $('slminfo').innerHTML=!m.enabled?'Rules and validators only (small model off).':m.used?`Rules + validators + small model <b>${esc(m.model)}</b>: confirmed ${m.verified}, doubted ${m.downgraded}, found ${m.discovered} extra · ${m.calls} calls · ${m.seconds}s${m.note?'<br>'+esc(m.note):''}`:`Rules and validators only — ${esc(m.note||'small model unavailable')}`;
+  $('ents').innerHTML=Object.entries(S.entities).map(([k,v])=>`<div><b>NAME_${k}</b>: ${v.map(esc).join(' · ')}</div>`).join('')||'—';
+  $('supp').innerHTML=S.suppressed.slice(0,12).map(s=>`<li><code>${esc(s.text)}</code> — ${esc(s.reason)}</li>`).join('')||'<li>—</li>';
+  showCur();if(view==='page')loadPages();
+}
+function showCur(){const c=S.cands[cur];$('cur').innerHTML=c?`<div class="t">${esc(c.text)}</div><div><span class="chip" style="background:rgb(${COL[c.label]})">${c.label}</span> conf ${c.conf.toFixed(2)} · ${c.status}</div><div class="mute">${esc(c.reason||c.source)}</div>`:'Click a highlight.';
+  const m=document.querySelector('mark.cur');if(m&&view==='text')m.scrollIntoView({block:'center',behavior:'smooth'})}
+function select(i){cur=i;document.querySelectorAll('mark').forEach(m=>m.classList.toggle('cur',+m.dataset.id===i));showCur()}
+function nextPending(from){for(let k=1;k<=S.cands.length;k++){const i=(from+k)%S.cands.length;if(S.cands[i].status==='pending')return i}return from}
+async function decide(status,sim){if(cur<0)return;const id=cur;S=await api('/api/decide',{id,status,similar:!!sim});const nx=status==='pending'?id:nextPending(id);cur=nx;render()}
+$('bA').onclick=()=>decide('approved');$('bR').onclick=()=>decide('rejected');$('bAS').onclick=()=>decide('approved',1);$('bRS').onclick=()=>decide('rejected',1);$('bU').onclick=()=>decide('pending');
+$('bulk').onclick=async()=>{S=await api('/api/bulk',{min_conf:.85});render()};
+$('rescan').onclick=async()=>{S=await api('/api/rescan');cur=-1;render()};
+$('slmtoggle').onchange=async e=>{if(!S){e.target.checked=true;return}$('slminfo').textContent='Re-analysing…';S=await api('/api/slm',{enabled:e.target.checked});cur=-1;render()};
+$('reset').onclick=async()=>{if(!confirm('Forget all remembered accepts/rejects? Your approvals in this document are kept only if the items are still detected.'))return;S=await api('/api/reset_learning');cur=-1;render()};
+function selOffsets(){const s=getSelection();if(!s.rangeCount||s.isCollapsed)return null;const r=s.getRangeAt(0);
+  const a=r.startContainer.parentElement,b=r.endContainer.parentElement;if(!a.dataset.s||!b.dataset.s)return null;
+  return[+a.dataset.s+r.startOffset,+b.dataset.s+r.endOffset]}
+async function addSel(){const o=selOffsets();if(!o){alert('Select text that is not already highlighted.');return}
+  S=await api('/api/add',{start:o[0],end:o[1],label:$('label').value,similar:true});getSelection().removeAllRanges();render()}
+$('addbtn').disabled=false;$('addbtn').onclick=addSel;
+async function doExport(){const pend=S.cands.filter(c=>c.status==='pending').length;
+  if(pend&&!confirm(`${pend} candidates are still unreviewed and will NOT be redacted. Export anyway?`))return;
+  const r=await api('/api/export');let h=`${r.approved} items redacted. <a href="${r.download}">Download</a>`;
+  if(r.verification){const v=r.verification;h+=v.ok?`<div class="ok">✔ Verified: ${v.checked} removed strings not recoverable (text, streams, metadata)</div>`:`<div class="bad">✘ Still readable in the exported file:</div><ul>${[...new Set(v.leaks.map(l=>l[0]))].map(s=>`<li><code>${esc(s)}</code>${v.context&&v.context[s]?` — appears in: <i>“${esc(v.context[s])}”</i>`:''}</li>`).join('')}</ul><div class="mute">Usually this means the same text sits in another item you did not approve. Approve that item and export again.</div>`}
+  if(r.preview)h+=`<pre style="white-space:pre-wrap;max-height:220px;overflow:auto">${esc(r.preview)}</pre>`;$('exp').innerHTML=h;$('inspect').disabled=false}
+$('export').onclick=doExport;
+let ft=null;
+function fmt(n){return n<1024?n+' B':(n/1024).toFixed(1)+' KB'}
+async function openInspector(){const r=await fetch('/api/forensic');const o=await r.json();if(!r.ok){alert(o.error);return}
+  $('fhash').textContent=o.sha256;$('fq').value='';$('fres').textContent='Type at least 2 characters.';
+  const li=[];
+  if(o.kind==='pdf'){
+    li.push(`<li>${o.pages} page(s); each page is a flattened image (${o.images} image(s)) with the approved boxes burned into the pixels</li>`);
+    li.push(`<li>Fonts in the file: ${o.fonts.length?o.fonts.map(esc).join(', '):'none'} — only the invisible text layer's own font; the original document's text objects and fonts are not carried over</li>`);
+    li.push(`<li>Annotations: ${o.annotations_present?'<span class="bad">present</span>':'none'}</li>`);
+    const mf=Object.entries(o.metadata_fields);
+    li.push(`<li>Document info fields: ${mf.length?mf.map(([k,v])=>esc(k)+' = '+esc(v)).join('; '):'none'}; XMP metadata: ${o.xmp_present?'<span class="bad">present</span>':'none'}</li>`);
+    if(o.auto_check)li.push(`<li>Automatic check at export: ${o.auto_check.ok?'<span class="ok">passed</span>':'<span class="bad">failed</span>'} — ${o.auto_check.strings_checked} removed values searched, ${o.auto_check.recoverable} recoverable</li>`);
+  } else li.push('<li>Plain text file: placeholders were substituted in the text.</li>');
+  li.push(`<li>${fmt(o.bytes)} · text sources searched: ${o.sources.map(esc).join(', ')}</li>`);
+  $('fstruct').innerHTML='<ul>'+li.join('')+'</ul>';$('fmodal').hidden=false;$('fq').focus()}
+async function fsearch(){const q=$('fq').value;if(q.trim().length<2){$('fres').textContent='Type at least 2 characters.';return}
+  const r=await fetch('/api/forensic/search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:q})});const j=await r.json();if(!r.ok)return;
+  if($('fq').value!==q)return;       // a newer keystroke is already in flight
+  const head=j.found?`<div class="bad">Found ${j.total} time(s) in the exported file</div>`:`<div class="ok">0 occurrences of “${esc(j.query)}” in any source</div>`;
+  $('fres').innerHTML=head+'<table><tr><th>Source</th><th>Occurrences of “'+esc(j.query)+'”</th></tr>'+j.rows.map(x=>`<tr class="${x.hits?'rowN':'row0'}"><td>${esc(x.source)}</td><td>${x.hits?'✘ ':'✔ '}${x.hits}</td></tr>`).join('')+'</table>'}
+$('fq').oninput=()=>{clearTimeout(ft);ft=setTimeout(fsearch,200)};
+$('inspect').onclick=openInspector;$('fclose').onclick=()=>$('fmodal').hidden=true;
+$('fmodal').onclick=e=>{if(e.target.id==='fmodal')$('fmodal').hidden=true};
+let SR=null;
+function gauge(l){const c={Low:'#16a34a',Medium:'#d97706',High:'#dc2626'};return `<span style="display:inline-flex;gap:2px;vertical-align:middle">${['Low','Medium','High'].map(x=>`<span style="width:22px;height:8px;border-radius:2px;background:${x===l?c[l]:'var(--line)'}"></span>`).join('')}</span> <b style="color:${c[l]}">${l}</b>`}
+function sumHtml(showGen){const r=SR,k=r.risk;let h='';
+  const text=showGen?r.summary:(k.before.level!=='Low'?k.risk_raw:r.summary);
+  h+=`<div style="color:var(--ink);font-size:13px">${esc(text)}</div>`;
+  const lvl=showGen?k.after.level:k.before.level;
+  h+=`<div style="margin-top:8px">Re-identification risk ${gauge(lvl)} <span class="mute">(rule-based heuristic)</span></div>`;
+  if(!showGen&&k.before.level!=='Low'){
+    h+=`<div class="card" style="margin-top:6px;padding:8px;border-color:#dc2626"><div class="mute"><b>Attacker view</b> — someone could try searching:</div><div class="hash" style="margin:4px 0">${esc(k.before.query)}</div><div class="mute">Found together: ${k.before.categories.map(esc).join(' + ')}. This shows <b>why</b> the combination is risky; it does not count how many people match.</div><div class="bad" style="margin-top:4px">Do not share this summary yet.</div><button id="gen" class="primary" style="margin-top:6px">Generalise quasi-identifiers</button></div>`}
+  if(showGen&&k.changes.length)h+=`<div class="mute" style="margin-top:6px"><b>Words changed:</b></div><ul>${k.changes.map(c=>`<li><code>${esc(c.from)}</code> → <code>${c.to?esc(c.to):'(removed)'}</code> <span class="mute">${esc(c.kind)}</span></li>`).join('')}</ul>`;
+  h+=`<div style="margin-top:6px">${r.ok?'<span class="ok">✔ Leak check passed</span>':'<span class="bad">✘ Check failed — do not use</span>'} · method: ${esc(r.method)} · based on ${r.approved} approved redactions</div>`;
+  if(r.pending_unreviewed)h+=`<div class="bad">${r.pending_unreviewed} candidates are unreviewed, so the summary may still contain their text.</div>`;
+  if(k.document.level!=='Low')h+=`<div class="mute" style="margin-top:6px">⚠ The exported <b>document</b> still has this kind of combination in one sentence (${k.document.terms.map(esc).join(' · ')}). Generalising changes the summary only. Select those words in the Text view and add them as redactions if they should go.</div>`;
+  const lg=showGen?r.log:r.log.filter(l=>!/^generalised/.test(l));if(lg.length)h+='<ul>'+lg.map(l=>`<li>${esc(l)}</li>`).join('')+'</ul>';
+  h+=`<div class="mute" style="margin-top:4px">${esc(k.note)}</div>`;
+  $('sumout').innerHTML=h;const g=$('gen');if(g)g.onclick=()=>sumHtml(true)}
+async function doSummary(){$('sumout').textContent='Working…';
+  SR=await api('/api/summary');SR.risk.risk_raw=SR.risk.raw_summary;sumHtml(false)}
+$('sum').onclick=doSummary;
+function setView(v){view=v;$('doc').hidden=v!=='text';$('pages').hidden=v!=='page';$('tText').classList.toggle('on',v==='text');$('tPage').classList.toggle('on',v==='page');if(v==='page')loadPages()}
+$('tText').onclick=()=>setView('text');$('tPage').onclick=()=>setView('page');
+function loadPages(){const t=Date.now();$('pages').innerHTML=Array.from({length:S.pages},(_,i)=>`<img src="/page/${i}.png?t=${t}">`).join('')}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')$('fmodal').hidden=true;if(!S||/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;const k=e.key.toLowerCase();
+  if(k==='a'){decide('approved',e.shiftKey)}else if(k==='r'){decide('rejected',e.shiftKey)}else if(k==='u'){decide('pending')}
+  else if(k===' '||k==='j'||k==='arrowdown'){e.preventDefault();select((cur+1)%S.cands.length)}
+  else if(k==='k'||k==='arrowup'){e.preventDefault();select((cur-1+S.cands.length)%S.cands.length)}
+  else if(k==='n'){addSel()}else if(k==='e'){doExport()}else if(k==='s'){doSummary()}});
+</script>
+</body>
+</html>

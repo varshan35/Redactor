@@ -1,0 +1,27 @@
+# Working files: uploaded documents, exports, remembered corrections.
+# These can contain real personal data. Never commit them.
+work/
+feedback.json
+redacted.*
+input.*
+
+# Anything you test with
+*.pdf
+!docs/**/*.pdf
+*.docx
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Packaging leftovers
+*.zip

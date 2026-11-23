@@ -1,0 +1,7 @@
+flask
+pillow
+pypdfium2
+reportlab
+pdfminer.six
+pdfplumber
+pikepdf

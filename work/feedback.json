@@ -1,0 +1,19 @@
+{
+  "accepted": {
+    "52": "NAME",
+    "Male": "NAME",
+    "ICD-10-I20.9": "NAME",
+    "PAT-44921": "NAME",
+    "SN-8831": "NAME",
+    "LOT-9942": "NAME",
+    "120/80": "NAME",
+    "25 August 2024": "NAME",
+    "MED-KA-2012-9901": "NAME",
+    "C-302": "NAME"
+  },
+  "rejected": {
+    "37b9a3d6d1828a49": [
+      "attending doctor"
+    ]
+  }
+}
