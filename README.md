@@ -51,7 +51,7 @@ python run_tests.py           # runs everything below, prints PASS/FAIL per suit
 3. A new PDF is built from that image plus an invisible text layer containing only placeholders and non-redacted words.
 4. The result is re-read with every extractor and searched for each removed string; export reports pass/fail.
 
-## Limitations (by design, stated honestly)
+## Limitations (by design)
 
 - Only detected or reviewer-added items are redacted. Review remains the safety net.
 - Scanned/image-only PDFs are not supported (no OCR).
